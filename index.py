@@ -1,5 +1,4 @@
 import logging
-from http.server import BaseHTTPRequestHandler
 from os.path import join
 
 import joblib
@@ -7,7 +6,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -66,25 +65,5 @@ def predict():
     return jsonify(response)
 
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        content_length = int(self.headers["Content-Length"])
-        body = self.rfile.read(content_length)
-
-        with app.test_client() as client:
-            response = client.post(
-                "/api/predict", data=body, content_type="application/json"
-            )
-            self.send_response(response.status_code)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(response.get_data())
-
-    def do_GET(self):
-        self.send_response(405)
-        self.end_headers()
-
-
-# The following line is only needed if you want to test the server locally
-# if __name__ == "__main__":
-#     app.run(port=5328)
+if __name__ == "__main__":
+    app.run(port=5328)
