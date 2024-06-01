@@ -54,7 +54,11 @@ def predict():
         predicted_value = predictions[nutrient]
         difference = actual_value - predicted_value
 
-        if difference >= 0:
+        if predicted_value < 0:
+            comparisons[nutrient] = (
+                f"Insufficient (Deficit = {abs(predicted_value):.2f})"
+            )
+        elif difference >= 0:
             comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
         else:
             comparisons[nutrient] = f"Insufficient (Deficit = {abs(difference):.2f})"
