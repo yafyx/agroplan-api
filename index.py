@@ -57,7 +57,7 @@ def predict():
         if difference >= 0:
             comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
         else:
-            comparisons[nutrient] = f"Insufficient (Deficit = {difference:.2f})"
+            comparisons[nutrient] = f"Insufficient (Deficit = {abs(difference):.2f})"
 
     response = {"predictions": predictions, "comparisons": comparisons}
 
