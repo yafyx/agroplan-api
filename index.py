@@ -48,17 +48,16 @@ def predict():
         logging.debug(f"Prediction for {nutrient}: {prediction}")
         predictions[nutrient] = prediction
 
-    comparisons = {
-        "N": "Sufficient"
-        if float(data["N"]) >= predictions["N"]
-        else "Insufficient, needs to be increased",
-        "P": "Sufficient"
-        if float(data["P"]) >= predictions["P"]
-        else "Insufficient, needs to be increased",
-        "K": "Sufficient"
-        if float(data["K"]) >= predictions["K"]
-        else "Insufficient, needs to be increased",
-    }
+    comparisons = {}
+    for nutrient in ["N", "P", "K"]:
+        actual_value = nutrient_values[nutrient]
+        predicted_value = predictions[nutrient]
+        difference = actual_value - predicted_value
+
+        if difference >= 0:
+            comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
+        else:
+            comparisons[nutrient] = f"Insufficient (Deficit = {difference:.2f})"
 
     response = {"predictions": predictions, "comparisons": comparisons}
 
