@@ -50,17 +50,19 @@ def predict():
 
     comparisons = {}
     for nutrient in ["N", "P", "K"]:
-        actual_value = nutrient_values[nutrient] 
-        
+        actual_value = nutrient_values[nutrient]
         predicted_value = predictions[nutrient]
         difference = round(actual_value - predicted_value)
-        logging.debug(f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}")
+        logging.debug(
+            f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}"
+        )
+
         if difference > 0:
             comparisons[nutrient] = f"Insufficient (Surplus = {difference:.2f})"
         elif difference < 0:
             comparisons[nutrient] = f"Insufficient (Deficit = {difference:.2f})"
         elif difference == 0:
-            comparisons[nutrient] = f"Sufficient"
+            comparisons[nutrient] = "Sufficient"
 
     response = {"predictions": predictions, "comparisons": comparisons}
     logging.debug(f"Response: {response}")
