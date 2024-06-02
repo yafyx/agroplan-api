@@ -23,9 +23,9 @@ for nutrient in ["N", "P", "K"]:
 def predict():
     data = request.get_json()
     common_features = [
-        float(data["pH"]),
         float(data["Temperature"]),
         float(data["Humidity"]),
+        float(data["pH"]),
         float(data["Rainfall"]),
         int(data["Crop"]),
     ]
@@ -40,9 +40,13 @@ def predict():
 
     predictions = {}
     for nutrient in ["N", "P", "K"]:
-        input_features = [
-            nutrient_values[n] for n in ["N", "P", "K"] if n != nutrient
-        ] + common_features
+        if nutrient == "N":
+            input_features = [nutrient_values[n] for n in ["P", "K"]] + common_features
+        elif nutrient == "P":
+            input_features = [nutrient_values[n] for n in ["N", "K"]] + common_features
+        elif nutrient == "K":
+            input_features = [nutrient_values[n] for n in ["N", "P"]] + common_features
+
         logging.debug(f"Input features for {nutrient} prediction: {input_features}")
         prediction = models[nutrient].predict([input_features])[0]
         logging.debug(f"Prediction for {nutrient}: {prediction}")
@@ -52,16 +56,16 @@ def predict():
     for nutrient in ["N", "P", "K"]:
         actual_value = nutrient_values[nutrient]
         predicted_value = predictions[nutrient]
-        difference = round(actual_value - predicted_value)
+        difference = round(actual_value - predicted_value, 2)
         logging.debug(
             f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}"
         )
 
         if difference > 0:
-            comparisons[nutrient] = f"Insufficient (Surplus = {difference:.2f})"
+            comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
         elif difference < 0:
-            comparisons[nutrient] = f"Insufficient (Deficit = {difference:.2f})"
-        elif difference == 0:
+            comparisons[nutrient] = f"Insufficient (Deficit = -{-difference:.2f})"
+        else:
             comparisons[nutrient] = "Sufficient"
 
     response = {"predictions": predictions, "comparisons": comparisons}
