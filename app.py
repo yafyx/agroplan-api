@@ -56,7 +56,7 @@ def predict():
     for nutrient in ["N", "P", "K"]:
         actual_value = nutrient_values[nutrient]
         predicted_value = predictions[nutrient]
-        difference = round(predicted_value - actual_value , 2)
+        difference = round(actual_value - predicted_value, 2)
         logging.debug(
             f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}"
         )
