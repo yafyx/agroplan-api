@@ -36,7 +36,15 @@ def predict():
         "K": float(data["K"]),
     }
 
-    logging.debug(f"Received input features: {nutrient_values} and {common_features}")
+    leafSap = [
+        float(data["N_leafSap"]),
+        float(data["P_leafSap"]),
+        float(data["K_leafSap"]),
+    ]
+
+
+
+    logging.debug(f"Received input features: {nutrient_values} and {common_features} and {leafSap}")
 
     predictions = {}
     for nutrient in ["N", "P", "K"]:
@@ -53,22 +61,27 @@ def predict():
         predictions[nutrient] = prediction
 
     comparisons = {}
+    comparisons_value = {}
     for nutrient in ["N", "P", "K"]:
         actual_value = nutrient_values[nutrient]
         predicted_value = predictions[nutrient]
-        difference = round(actual_value - predicted_value, 2)
+        leafSap_value = leafSap[["N", "P", "K"].index(nutrient)]
+        difference = round(predicted_value - actual_value - leafSap_value, 2)
+       
         logging.debug(
-            f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}"
+            f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}, Leaf Sap: {leafSap_value}"
         )
 
         if difference > 0:
+            comparisons_value[nutrient] = difference
             comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
         elif difference < 0:
+            comparisons_value[nutrient] = difference
             comparisons[nutrient] = f"Insufficient (Deficit = -{-difference:.2f})"
         else:
             comparisons[nutrient] = "Sufficient"
 
-    response = {"predictions": predictions, "comparisons": comparisons}
+    response = {"predictions": predictions, "comparisons": comparisons, "comparisons_value": comparisons_value}
     logging.debug(f"Response: {response}")
 
     return jsonify(response)
