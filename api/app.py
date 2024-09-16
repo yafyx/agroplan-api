@@ -23,9 +23,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=42
 )
 
-# knn = KNeighborsClassifier(n_neighbors=5)
-# knn.fit(X_train, y_train)
-
 
 @app.route("/api/predict", methods=["POST"])
 def predict():
@@ -59,13 +56,9 @@ def predict():
 
         print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
 
-        crop_data = pd.DataFrame(
-            np.random.rand(100, 7) * 100,
-            columns=["N", "P", "K", "temperature", "humidity", "ph", "rainfall"],
-        )
-        print(crop_data)
-
+        crop_data = df[df["label"] == crop_prediction]
         averages = crop_data.mean()
+
         recommendations = {}
         for nutrient in ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]:
             std_value = averages[nutrient]
