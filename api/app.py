@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -10,20 +11,20 @@ from sklearn.neighbors import KNeighborsClassifier
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Global variables to store the model and other necessary data
 model = None
 x_test = None
 y_test = None
 x_train = None
 y_train = None
+crops = None
 
 
 def load_data_and_train_model():
-    global model, x_test, y_test, x_train, y_train
+    global model, x_test, y_test, x_train, y_train, crops
 
-    df = pd.read_csv("./dataset/Crop_recommendation.csv")
-    features = df[["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]]
-    target = df["label"]
+    crops = pd.read_csv("./dataset/Crop_recommendation.csv")
+    features = crops[["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]]
+    target = crops["label"]
 
     x_train, x_test, y_train, y_test = train_test_split(
         features, target, test_size=0.3, random_state=2
@@ -41,10 +42,12 @@ load_data_and_train_model()
 
 @app.route("/api/predict", methods=["POST"])
 def predict():
-    global model, x_test, y_test, x_train, y_train
+    global model, x_test, y_test, x_train, y_train, crops
 
     try:
+        # Get input data from request
         data = request.json
+
         N = float(data["N"])
         P = float(data["P"])
         K = float(data["K"])
@@ -57,40 +60,44 @@ def predict():
         P_leafSap = float(data["P_leafSap"])
         K_leafSap = float(data["K_leafSap"])
 
-        input_data = pd.DataFrame(
-            [[N, P, K, temperature, humidity, ph, rainfall]],
+        x_values = np.array([[N, P, K, temperature, humidity, ph, rainfall]])
+        x_data = pd.DataFrame(
+            x_values,
             columns=["N", "P", "K", "temperature", "humidity", "ph", "rainfall"],
         )
+        print("Input Parameter:\n", x_data)
 
-        print("Input Parameter:")
-        print(input_data)
-
-        prediction = model.predict(input_data)
+        prediction = model.predict(x_data)
         crop_prediction = prediction[0]
 
         predicted_values = model.predict(x_test)
         knn_accuracy = metrics.accuracy_score(y_test, predicted_values) * 100
 
+        # Train and test accuracy
         knn_train_accuracy = model.score(x_train, y_train) * 100
         knn_test_accuracy = model.score(x_test, y_test) * 100
 
         print(f"\nKNN Accuracy is: {knn_accuracy:.2f} %")
-        print(f"knn_train_accuracy = {knn_train_accuracy:.2f} %")
-        print(f"knn_test_accuracy = {knn_test_accuracy:.2f} %")
 
-        print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
+        crop_data = crops[crops["label"] == selected_crop]
+        if crop_data.empty:
+            return jsonify({"error": "Crop not found in dataset"}), 400
 
         # Load the full dataset again to get the mean values for the predicted crop
         df = pd.read_csv("./dataset/Crop_recommendation.csv")
         x_rows = df[df["label"] == crop_prediction].drop(["label"], axis=1)
         print(x_rows)
 
-        mean_val = [x_rows[col].mean() for col in x_rows.columns]
+        mean_values = {
+            col: crop_data[col].mean()
+            for col in ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
+        }
+
         recommendations = {}
         percent = []
 
-        for x, y in zip(mean_val, x_rows.columns):
-            sensor_value = input_data[y].values[0]
+        for y, x in mean_values.items():
+            sensor_value = x_data[y].values[0]
             recommendation = round(x - sensor_value, 2)
 
             if y in ["N", "P", "K"]:
