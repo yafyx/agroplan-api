@@ -125,20 +125,23 @@ def predict():
             "P": recommendations["P"],
             "K": recommendations["K"],
         }
-        leafSap = [N_leafSap, P_leafSap, K_leafSap]
+        leafSap = {"N": N_leafSap, "P": P_leafSap, "K": K_leafSap}
 
         for nutrient in ["N", "P", "K"]:
-            actual_value = nutrient_values[nutrient]
-            predicted_value = predictions[nutrient]
-            leafSap_value = leafSap[["N", "P", "K"].index(nutrient)]
-            difference = round(predicted_value - actual_value - leafSap_value, 2)
+            envir_value = nutrient_values[nutrient]
+            leaf_sap_value = leafSap[nutrient]
+            predict_value = predictions[nutrient]
 
-            if difference > 0:
-                comparisons_value[nutrient] = difference
-                comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
-            elif difference < 0:
-                comparisons_value[nutrient] = difference
-                comparisons[nutrient] = f"Insufficient (Deficit = -{-difference:.2f})"
+            recommend_value = (envir_value + leaf_sap_value) - predict_value
+
+            comparisons_value[nutrient] = round(recommend_value, 2)
+
+            if recommend_value > 0:
+                comparisons[nutrient] = f"Sufficient (Surplus = {recommend_value:.2f})"
+            elif recommend_value < 0:
+                comparisons[nutrient] = (
+                    f"Insufficient (Deficit = {-recommend_value:.2f})"
+                )
             else:
                 comparisons[nutrient] = "Sufficient"
 
