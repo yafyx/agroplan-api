@@ -140,7 +140,7 @@ def predict():
                 comparisons[nutrient] = f"Sufficient (Surplus = {recommend_value:.2f})"
             elif recommend_value < 0:
                 comparisons[nutrient] = (
-                    f"Insufficient (Deficit = {-recommend_value:.2f})"
+                    f"Insufficient (Deficit = -{-recommend_value:.2f})"
                 )
             else:
                 comparisons[nutrient] = "Sufficient"
