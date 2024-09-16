@@ -1,41 +1,48 @@
 import logging
 
-import joblib
-import numpy as np
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-df = pd.read_csv("./dataset/Crop_recommendation.csv")
-
-model = joblib.load("./model/agroplan_model.joblib")
-
-X = df.drop("label", axis=1)
-y = df["label"]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42
-)
+# Global variables to store the model and other necessary data
+model = None
+x_test = None
+y_test = None
+x_train = None
+y_train = None
 
 
-def deviatedornot(data, val):
-    variance = np.var(data)
-    squared_difference1 = (val - np.mean(data)) ** 2
-    squared_difference2 = (np.mean(data) - val) ** 2
+def load_data_and_train_model():
+    global model, x_test, y_test, x_train, y_train
 
-    if (squared_difference1 > variance) & (squared_difference2 > variance):
-        return False
-    else:
-        return True
+    df = pd.read_csv("./dataset/Crop_recommendation.csv")
+    features = df[["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]]
+    target = df["label"]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        features, target, test_size=0.3, random_state=2
+    )
+
+    model = KNeighborsClassifier()
+    model.fit(x_train, y_train)
+
+    print("Model trained and ready.")
+
+
+# Call this function when the app starts
+load_data_and_train_model()
 
 
 @app.route("/api/predict", methods=["POST"])
 def predict():
+    global model, x_test, y_test, x_train, y_train
+
     try:
         data = request.json
         N = float(data["N"])
@@ -61,11 +68,11 @@ def predict():
         prediction = model.predict(input_data)
         crop_prediction = prediction[0]
 
-        predicted_values = model.predict(X_test)
+        predicted_values = model.predict(x_test)
         knn_accuracy = metrics.accuracy_score(y_test, predicted_values) * 100
 
-        knn_train_accuracy = model.score(X_train, y_train) * 100
-        knn_test_accuracy = model.score(X_test, y_test) * 100
+        knn_train_accuracy = model.score(x_train, y_train) * 100
+        knn_test_accuracy = model.score(x_test, y_test) * 100
 
         print(f"\nKNN Accuracy is: {knn_accuracy:.2f} %")
         print(f"knn_train_accuracy = {knn_train_accuracy:.2f} %")
@@ -73,6 +80,8 @@ def predict():
 
         print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
 
+        # Load the full dataset again to get the mean values for the predicted crop
+        df = pd.read_csv("./dataset/Crop_recommendation.csv")
         x_rows = df[df["label"] == crop_prediction].drop(["label"], axis=1)
         print(x_rows)
 
@@ -86,19 +95,19 @@ def predict():
 
             if y in ["N", "P", "K"]:
                 print(
-                    f"Nutrisi {y} nilai Standart (Rerata): {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                    f"Nutrisi {y} nilai Standart (Rerata): {round(x, 2)} dan Data Sensor: {round(sensor_value, 2)} ==>> Rekomendasi: {recommendation}"
                 )
             elif y == "humidity":
                 print(
-                    f"{y} (RH/kelembaban) rata-rata : {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                    f"{y} (RH/kelembaban) rata-rata : {round(x, 2)} dan Data Sensor: {round(sensor_value, 2)} ==>> Rekomendasi: {recommendation}"
                 )
             elif y == "ph":
                 print(
-                    f"{y} (Potential of Hydrogen) rata-rata: {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                    f"{y} (Potential of Hydrogen) rata-rata: {round(x, 2)} dan Data Sensor: {round(sensor_value, 2)} ==>> Rekomendasi: {recommendation}"
                 )
             else:
                 print(
-                    f"{y} nilai Standart (Rerata): {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                    f"{y} nilai Standart (Rerata): {round(x, 2)} dan Data Sensor: {round(sensor_value, 2)} ==>> Rekomendasi: {recommendation}"
                 )
 
             recommendations[y] = recommendation
@@ -107,11 +116,6 @@ def predict():
                 percent.append(-((x - sensor_value) * 100 / x))
             elif x <= sensor_value:
                 percent.append(((sensor_value - x) * 100 / sensor_value))
-
-        if crop_prediction == selected_crop:
-            crop_check_result = f"The current state of soil is {selected_crop} ready"
-        else:
-            crop_check_result = f"{selected_crop} can't be planted in such conditions"
 
         comparisons = {}
         comparisons_value = {}
@@ -129,10 +133,6 @@ def predict():
             leafSap_value = leafSap[["N", "P", "K"].index(nutrient)]
             difference = round(predicted_value - actual_value - leafSap_value, 2)
 
-            logging.debug(
-                f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}, Leaf Sap: {leafSap_value}"
-            )
-
             if difference > 0:
                 comparisons_value[nutrient] = difference
                 comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
@@ -141,6 +141,11 @@ def predict():
                 comparisons[nutrient] = f"Insufficient (Deficit = -{-difference:.2f})"
             else:
                 comparisons[nutrient] = "Sufficient"
+
+        if crop_prediction == selected_crop:
+            crop_check_result = f"The current state of soil is {selected_crop} ready"
+        else:
+            crop_check_result = f"{selected_crop} can't be planted in such conditions"
 
         response = {
             "knn_accuracy": round(knn_accuracy, 2),
