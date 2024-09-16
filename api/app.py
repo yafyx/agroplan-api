@@ -1,5 +1,4 @@
 import logging
-from os.path import join
 
 import joblib
 import numpy as np
@@ -7,7 +6,6 @@ import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -23,8 +21,16 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=42
 )
 
-# knn = KNeighborsClassifier(n_neighbors=5)
-# knn.fit(X_train, y_train)
+
+def deviatedornot(data, val):
+    variance = np.var(data)
+    squared_difference1 = (val - np.mean(data)) ** 2
+    squared_difference2 = (np.mean(data) - val) ** 2
+
+    if (squared_difference1 > variance) & (squared_difference2 > variance):
+        return False
+    else:
+        return True
 
 
 @app.route("/api/predict", methods=["POST"])
@@ -38,6 +44,10 @@ def predict():
         humidity = float(data["humidity"])
         ph = float(data["ph"])
         rainfall = float(data["rainfall"])
+        selected_crop = data["selected_crop"]
+        N_leafSap = float(data["N_leafSap"])
+        P_leafSap = float(data["P_leafSap"])
+        K_leafSap = float(data["K_leafSap"])
 
         input_data = pd.DataFrame(
             [[N, P, K, temperature, humidity, ph, rainfall]],
@@ -59,61 +69,55 @@ def predict():
 
         print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
 
-        crop_data = pd.DataFrame(
-            np.random.rand(100, 7) * 100,
-            columns=["N", "P", "K", "temperature", "humidity", "ph", "rainfall"],
-        )
-        print(crop_data)
+        x_rows = df[df["label"] == crop_prediction].drop(["label"], axis=1)
+        print(x_rows)
 
-        averages = crop_data.mean()
+        mean_val = [x_rows[col].mean() for col in x_rows.columns]
         recommendations = {}
-        for nutrient in ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]:
-            std_value = averages[nutrient]
-            sensor_value = input_data[nutrient].values[0]
-            recommendation = round(std_value - sensor_value, 2)
-            print(
-                f"{nutrient} nilai Standart (Rerata): {std_value:.2f} dan Data Sensor: {sensor_value} ==>> Rekomendasi: {recommendation}"
-            )
-            recommendations[nutrient] = recommendation
+        percent = []
 
-        crops = [
-            "apple",
-            "banana",
-            "rice",
-            "jute",
-            "watermelon",
-            "maize",
-            "chickpea",
-            "kidneybeans",
-            "mothbeans",
-            "mungbean",
-            "blackgram",
-            "lentil",
-            "pomegranate",
-            "mango",
-            "grapes",
-            "muskmelon",
-            "orange",
-            "papaya",
-            "coconut",
-            "cotton",
-            "coffee",
-            "pigeonpeas",
-        ]
+        for x, y in zip(mean_val, x_rows.columns):
+            sensor_value = input_data[y].values[0]
+            recommendation = round(x - sensor_value, 2)
 
-        if crop_prediction.lower() in crops:
-            crop_check_result = f"{crop_prediction} can be planted in such conditions"
+            if y in ["N", "P", "K"]:
+                print(
+                    f"Nutrisi {y} nilai Standart (Rerata): {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                )
+            elif y == "humidity":
+                print(
+                    f"{y} (RH/kelembaban) rata-rata : {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                )
+            elif y == "ph":
+                print(
+                    f"{y} (Potential of Hydrogen) rata-rata: {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                )
+            else:
+                print(
+                    f"{y} nilai Standart (Rerata): {round(x,2)} dan Data Sensor: {round(sensor_value,2)} ==>> Rekomendasi: {recommendation}"
+                )
+
+            recommendations[y] = recommendation
+
+            if x > sensor_value:
+                percent.append(-((x - sensor_value) * 100 / x))
+            elif x <= sensor_value:
+                percent.append(((sensor_value - x) * 100 / sensor_value))
+
+        if crop_prediction == selected_crop:
+            crop_check_result = f"The current state of soil is {selected_crop} ready"
         else:
-            crop_check_result = f"{crop_prediction} can't be planted in such conditions"
-
-        print(f"\n{crop_check_result}\n")
+            crop_check_result = f"{selected_crop} can't be planted is such conditions"
 
         response = {
             "knn_train_accuracy": round(knn_train_accuracy, 2),
             "knn_test_accuracy": round(knn_test_accuracy, 2),
             "crop_prediction": crop_prediction,
+            "selected_crop": selected_crop,
             "recommendations": recommendations,
             "crop_check_result": crop_check_result,
+            "percent_differences": percent,
+            "leaf_sap_analysis": {"N": N_leafSap, "P": P_leafSap, "K": K_leafSap},
         }
 
         return jsonify(response)
