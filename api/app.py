@@ -23,6 +23,9 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=42
 )
 
+# knn = KNeighborsClassifier(n_neighbors=5)
+# knn.fit(X_train, y_train)
+
 
 @app.route("/api/predict", methods=["POST"])
 def predict():
@@ -56,9 +59,13 @@ def predict():
 
         print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
 
-        crop_data = df[df["label"] == crop_prediction]
-        averages = crop_data.mean()
+        crop_data = pd.DataFrame(
+            np.random.rand(100, 7) * 100,
+            columns=["N", "P", "K", "temperature", "humidity", "ph", "rainfall"],
+        )
+        print(crop_data)
 
+        averages = crop_data.mean()
         recommendations = {}
         for nutrient in ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]:
             std_value = averages[nutrient]
@@ -69,10 +76,35 @@ def predict():
             )
             recommendations[nutrient] = recommendation
 
-        if crop_prediction.lower() == "rice":
-            crop_check_result = "rice can be planted in such conditions"
+        crops = [
+            "apple",
+            "banana",
+            "rice",
+            "jute",
+            "watermelon",
+            "maize",
+            "chickpea",
+            "kidneybeans",
+            "mothbeans",
+            "mungbean",
+            "blackgram",
+            "lentil",
+            "pomegranate",
+            "mango",
+            "grapes",
+            "muskmelon",
+            "orange",
+            "papaya",
+            "coconut",
+            "cotton",
+            "coffee",
+            "pigeonpeas",
+        ]
+
+        if crop_prediction.lower() in crops:
+            crop_check_result = f"{crop_prediction} can be planted in such conditions"
         else:
-            crop_check_result = "rice can't be planted in such conditions"
+            crop_check_result = f"{crop_prediction} can't be planted in such conditions"
 
         print(f"\n{crop_check_result}\n")
 
