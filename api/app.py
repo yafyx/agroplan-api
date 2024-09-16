@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from sklearn import metrics
 from sklearn.model_selection import train_test_split
 
 app = Flask(__name__)
@@ -60,10 +61,13 @@ def predict():
         prediction = model.predict(input_data)
         crop_prediction = prediction[0]
 
+        predicted_values = model.predict(X_test)
+        knn_accuracy = metrics.accuracy_score(y_test, predicted_values) * 100
+
         knn_train_accuracy = model.score(X_train, y_train) * 100
         knn_test_accuracy = model.score(X_test, y_test) * 100
 
-        print(f"\nKNN Accuracy is: {knn_test_accuracy:.2f} %")
+        print(f"\nKNN Accuracy is: {knn_accuracy:.2f} %")
         print(f"knn_train_accuracy = {knn_train_accuracy:.2f} %")
         print(f"knn_test_accuracy = {knn_test_accuracy:.2f} %")
 
@@ -107,9 +111,39 @@ def predict():
         if crop_prediction == selected_crop:
             crop_check_result = f"The current state of soil is {selected_crop} ready"
         else:
-            crop_check_result = f"{selected_crop} can't be planted is such conditions"
+            crop_check_result = f"{selected_crop} can't be planted in such conditions"
+
+        comparisons = {}
+        comparisons_value = {}
+        nutrient_values = {"N": N, "P": P, "K": K}
+        predictions = {
+            "N": recommendations["N"],
+            "P": recommendations["P"],
+            "K": recommendations["K"],
+        }
+        leafSap = [N_leafSap, P_leafSap, K_leafSap]
+
+        for nutrient in ["N", "P", "K"]:
+            actual_value = nutrient_values[nutrient]
+            predicted_value = predictions[nutrient]
+            leafSap_value = leafSap[["N", "P", "K"].index(nutrient)]
+            difference = round(predicted_value - actual_value - leafSap_value, 2)
+
+            logging.debug(
+                f"Actual value: {actual_value}, Predicted value: {predicted_value}, Difference: {difference}, Leaf Sap: {leafSap_value}"
+            )
+
+            if difference > 0:
+                comparisons_value[nutrient] = difference
+                comparisons[nutrient] = f"Sufficient (Surplus = {difference:.2f})"
+            elif difference < 0:
+                comparisons_value[nutrient] = difference
+                comparisons[nutrient] = f"Insufficient (Deficit = -{-difference:.2f})"
+            else:
+                comparisons[nutrient] = "Sufficient"
 
         response = {
+            "knn_accuracy": round(knn_accuracy, 2),
             "knn_train_accuracy": round(knn_train_accuracy, 2),
             "knn_test_accuracy": round(knn_test_accuracy, 2),
             "crop_prediction": crop_prediction,
@@ -117,7 +151,8 @@ def predict():
             "recommendations": recommendations,
             "crop_check_result": crop_check_result,
             "percent_differences": percent,
-            "leaf_sap_analysis": {"N": N_leafSap, "P": P_leafSap, "K": K_leafSap},
+            "comparisons": comparisons,
+            "comparisons_value": comparisons_value,
         }
 
         return jsonify(response)
