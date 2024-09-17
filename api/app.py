@@ -40,7 +40,7 @@ def load_data_and_train_model():
 load_data_and_train_model()
 
 
-@app.route("/api/predict", methods=["POST","GET"])
+@app.route("/api/predict", methods=["POST"])
 def predict():
     global model, x_test, y_test, x_train, y_train, crops
 
