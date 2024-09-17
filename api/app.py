@@ -139,17 +139,17 @@ def predict():
         comparisons_value = {}
         nutrient_values = {"N": N, "P": P, "K": K}
         predictions = {
-            "N": recommendations["N"],
-            "P": recommendations["P"],
-            "K": recommendations["K"],
+            "N": round(mean_N, 2),
+            "P": round(mean_P, 2),
+            "K": round(mean_K, 2),
         }
         leafSap = {"N": N_leafSap, "P": P_leafSap, "K": K_leafSap}
-
+        
         for nutrient in ["N", "P", "K"]:
             envir_value = nutrient_values[nutrient]
             leaf_sap_value = leafSap[nutrient]
             predict_value = predictions[nutrient]
-
+            print(envir_value, leaf_sap_value,predict_value )
             recommend_value = (envir_value + leaf_sap_value) - predict_value
 
             comparisons_value[nutrient] = round(recommend_value, 2)
