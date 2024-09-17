@@ -21,7 +21,7 @@ crops = None
 
 def load_data_and_train_model():
     global model, x_test, y_test, x_train, y_train, crops
-
+    
     crops = pd.read_csv("./dataset/Crop_recommendation.csv")
     features = crops[["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]]
     target = crops["label"]
@@ -40,7 +40,7 @@ def load_data_and_train_model():
 load_data_and_train_model()
 
 
-@app.route("/api/predict", methods=["POST"])
+@app.route("/api/predict", methods=["POST","GET"])
 def predict():
     global model, x_test, y_test, x_train, y_train, crops
 
@@ -79,6 +79,8 @@ def predict():
 
         print(f"\nKNN Accuracy is: {knn_accuracy:.2f} %")
 
+        print(f"\n\nCrops Prediction (KNN Classifier): {crop_prediction}")
+
         crop_data = crops[crops["label"] == selected_crop]
         if crop_data.empty:
             return jsonify({"error": "Crop not found in dataset"}), 400
@@ -92,6 +94,15 @@ def predict():
             col: crop_data[col].mean()
             for col in ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
         }
+
+        # mean values 
+        mean_N = mean_values["N"]
+        mean_P = mean_values["P"]
+        mean_K = mean_values["K"]
+        mean_temperature = mean_values["temperature"]
+        mean_humidity = mean_values["humidity"]
+        mean_ph = mean_values["ph"]
+        mean_rainfall = mean_values["rainfall"]
 
         recommendations = {}
         percent = []
@@ -168,6 +179,15 @@ def predict():
             "percent_differences": percent,
             "comparisons": comparisons,
             "comparisons_value": comparisons_value,
+            "mean_values":  {
+                "N": round(mean_N, 2),
+                "P": round(mean_P, 2),
+                "K": round(mean_K, 2),
+                "temperature": round(mean_temperature, 2),
+                "humidity": round(mean_humidity, 2),
+                "ph": round(mean_ph, 2),
+                "rainfall": round(mean_rainfall, 2),
+            },
         }
 
         return jsonify(response)
